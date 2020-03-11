@@ -1,0 +1,94 @@
+<dx-data-grid class="arctic-table table table-striped domain-table" id="gridContainerMultiRowHeader"
+              [dataSource]="displayedCompanies" [allowColumnReordering]="true" [height]="getTableHeight(displayedCompanies?.length)"
+              [allowColumnResizing]="true" [columnAutoWidth]="false" [showBorders]="false" [wordWrapEnabled]="true"
+              [noDataText]="'No data to display.'" (onCellPrepared)="onCellPrepared($event)"
+              (onEditorPreparing)="onEditorPreparing($event)" (onToolbarPreparing)="onToolbarPreparing($event)">
+  <dxo-filter-row [showAllText]="'All'" [visible]="true"></dxo-filter-row>
+  <dxo-load-panel [enabled]="true"></dxo-load-panel>
+  <dxo-paging [pageSize]="100"></dxo-paging>
+  <dxo-pager [visible]="true" [showPageSizeSelector]="true" [allowedPageSizes]="[10, 50, 100, 250]" [showInfo]="true">
+  </dxo-pager>
+  <dxo-header-filter [visible]="true"></dxo-header-filter>
+  <dxo-search-panel [visible]="true" [width]="240" placeholder="Search..."></dxo-search-panel>
+  <dxo-filter-panel [visible]="true"></dxo-filter-panel>
+  <dxi-column [alignment]="'left'" [allowHeaderFiltering]="false" [editorOptions]="{ placeholder: 'Search...' }"
+              dataField="company.name" caption="Company" dataType="string" [width]="180">
+  </dxi-column>
+  <dxi-column [alignment]="'center'" [allowHeaderFiltering]="false" [editorOptions]="{ placeholder: 'Search...' }"
+              dataField="createdDate" caption="Signup Date" [width]="140" [allowSorting]="true" sortOrder="desc"
+              format="dd-MMM-yyyy" dataType="date"></dxi-column>
+  <dxi-column [alignment]="'center'" [allowHeaderFiltering]="true" [allowSearch]="true"
+              [editorOptions]="{ placeholder: 'Search...' }" dataField="status" caption="Status" [width]="120">
+    <dxo-header-filter [dataSource]="statusType"></dxo-header-filter>
+    <dxo-lookup [dataSource]="statusType" valueExpr="id" displayExpr="text">
+    </dxo-lookup>
+  </dxi-column>
+  <dxi-column [alignment]="'center'" [allowHeaderFiltering]="false" [editorOptions]="{ placeholder: 'Search...' }"
+              dataField="licenceExpiry" caption="Expiry Date" [width]="130" format="dd-MMM-yyyy" dataType="date">
+  </dxi-column>
+  <dxi-column [alignment]="'left'" [allowHeaderFiltering]="false" [editorOptions]="{ placeholder: 'Search...' }"
+              dataField="licenceTier.name" caption="License Type" dataType="string" [width]="120">
+  </dxi-column>
+  <dxi-column [alignment]="'left'" [allowHeaderFiltering]="false" [editorOptions]="{ placeholder: 'Search...' }"
+              dataField="contentModuleName" caption="Content Modules" dataType="string" [allowSearch]="true">
+  </dxi-column>
+  <dxi-column [alignment]="'center'" [allowHeaderFiltering]="false" [editorOptions]="{ placeholder: 'Search...' }"
+              caption="Total">
+    <dxi-column [alignment]="'center'" [allowHeaderFiltering]="false" [editorOptions]="{ placeholder: 'Search...' }"
+                dataField="totalUsers" caption="User" dataType="number" [width]="100">
+    </dxi-column>
+    <dxi-column [alignment]="'center'" [allowHeaderFiltering]="false" [editorOptions]="{ placeholder: 'Search...' }"
+                dataField="totalAssessments" caption="Assessment" dataType="number" [width]="100">
+    </dxi-column>
+  </dxi-column>
+  <dxi-column [alignment]="'center'" [allowHeaderFiltering]="false" [allowEditing]="false" [allowSorting]="false"
+              [allowSearch]="false" dataField="actions" caption="Actions" dataType="object" [width]="130" cellTemplate="actionTemplate">
+  </dxi-column>
+
+  <div *dxTemplate="let data of 'searchingPanel'">
+    <div>
+      <button class="btn btn-primary" [routerLink]="['/company/new']">New Company</button>
+    </div>
+  </div>
+
+  <div *dxTemplate="let action of 'actionTemplate'">
+    <div class='d-flex'>
+      <div
+        *ngIf="(action.data.status == CompanyAccountStatus.Expired || isRenewalPeriod(action.data)) && action.data.status != CompanyAccountStatus.Trial"
+        [ngbTooltip]="getToolTip(156)">
+        <button class="btn icon"
+                [routerLink]="['/admin/account-management/payment/renew/', action.data.companyAccountId]">
+          <i class="far fa-repeat-alt"></i></button>
+      </div>
+      <div *ngIf="canUpgrade(action.data)" [ngbTooltip]="getToolTip(155)">
+        <button class="btn icon" (click)="upgrade(action.data)">
+          <i class="far fa-arrow-circle-up"></i></button>
+      </div>
+      <div *ngIf="action.data.status == CompanyAccountStatus.Paid && !isRenewalPeriod(action.data)"
+           [ngbTooltip]="getToolTip(160)" placement="bottom-right">
+        <button class="btn icon"
+                [routerLink]="['/admin/account-management/payment/additional/', action.data.companyAccountId]">
+          <i class="far fa-plus"></i></button>
+      </div>
+      <div *ngIf="action.data.status == CompanyAccountStatus.Registered" [ngbTooltip]="getToolTip(159)">
+        <button class="btn icon"
+                [routerLink]="['/admin/account-management/payment/', action.data.companyAccountId]"><i
+          class="far fa-dollar-sign"></i></button>
+      </div>
+      <div>
+        <button class="btn icon" (click)="toggleCompanyActiveStatus(action.data)"
+                [ngbTooltip]="getActivatedText(action.data?.isDeactivated)" placement="bottom-right">
+          <i class="far"
+             [ngClass]="{'fa-times-circle': ! action.data.isDeactivated, 'fa-check-circle': action.data.isDeactivated}"></i>
+        </button>
+      </div>
+      <div *ngIf="action.data.status == CompanyAccountStatus.Trial" [ngbTooltip]="getToolTip(154)"
+           placement="bottom-right">
+        <button class="btn icon" (click)="extendTrialCompany(action.data)">
+          <i class="far fa-clock"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</dx-data-grid>
+</div>
